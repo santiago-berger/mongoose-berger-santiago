@@ -13,9 +13,13 @@ export const createUser = async (req, res) => {
         // create inserta un nuevo documento en la coleccion users, incluyendo el array embebido addresses
         const newUser = await UserModel.create(data);
 
+        // create no permite usar select, por eso se convierte el documento a objeto y se separa la contraseña del resto de los datos
+        // password queda en una variable aparte que no se usa, y user contiene todos los campos excepto la contraseña
+        const { password, ...user } = newUser.toJSON();
+
         return res.status(201).json({
             msg: "Usuario creado correctamente",
-            data: newUser,
+            data: user,
         });
     } catch (error) {
         console.log(error);
@@ -30,6 +34,8 @@ export const getAllUsers = async (req, res) => {
     try {
         // se filtra por isActive en true para excluir los usuarios eliminados de forma logica
         const users = await UserModel.find({ isActive: true })
+            // el signo menos excluye el campo password de la respuesta para no exponer la contraseña
+            .select("-password")
             // populate virtual de la relacion uno a muchos, user no guarda sus posts
             // mongoose busca en la coleccion posts los documentos cuyo autor coincide con el id de cada usuario
             // el segundo argumento indica que solo se traiga el campo title de cada post
@@ -58,6 +64,7 @@ export const getUserById = async (req, res) => {
 
         // no es necesario filtrar por isActive porque la validacion del id ya verifico que el usuario exista y este activo
         const user = await UserModel.findById(id)
+            .select("-password")
             .populate("posts", "title")
             .populate("profile", "bio phone");
 
@@ -86,7 +93,7 @@ export const updateUser = async (req, res) => {
         // returnDocument after hace que se devuelva el documento ya actualizado y no la version anterior
         const updatedUser = await UserModel.findByIdAndUpdate(id, data, {
             returnDocument: "after",
-        });
+        }).select("-password");
 
         return res.status(200).json({
             msg: "Usuario actualizado correctamente",
